@@ -17,7 +17,7 @@ Etc
 */
 
 
-void validateStuff(char *arr, int neg, int bin, int hex, int b, int r);
+void sendStuff(char *biNumArr, char *rArr, int neg, int zeroB, int hex, int b, int r);
 
 
 int main(int argc, char *argv[]) {
@@ -27,9 +27,12 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 	
-	int biNum = 0, bFlag = 0, bIndex = 0, i = 0, hex = 0, one = 0 , neg = 0, rFlag = 0, zero = 0, zeroStart = 0;
+	int zeroB = 0, bFlag = 0, bIndex = 0, i = 0, hex = 0, one = 0 , neg = 0, rFlag = 0, rIndex = 0, zero = 0, zeroStart = 0;
 	char *arr;
 	char *biNumArr = malloc(sizeof(char) * 100);
+	char *rArr = malloc(sizeof(char) * 100);
+	printf("Arr %p, Bi Num %p, R arr %p\n", arr, biNumArr, rArr);
+	int bitCount = 0;
 	
 	for(i = 0; i < argc; i++) {
 
@@ -51,19 +54,21 @@ int main(int argc, char *argv[]) {
 			
 			one = 0, neg = 0, zero = 0;
 
+			// NUMBER AFTER -b
+			if(i == bIndex+1 && bIndex > 0) {
+				bitCount = atoi(argv[i]);
+				printf("\nBit Count: %d\n\n",bitCount);
+				continue;
+			}
+			// NUMBERS AFTER -r
+			if(i == rIndex+1 && rIndex > 0) {
+				strcpy(rArr, argv[i]);
+				continue;
+			}
 
 			for(j = 0; j < len; j++) {
 
 				printf("Inside Loop: %c\n",arr[j]);
-
-				// INVALID CHARACTERS
-				/* 45 = -, 48-57 = 0-9, 65-70 = A-F, 98 = b, 114 = r */
-				if((arr[j] < 45) || (arr[j] == 46 || arr[j] == 47) || (arr[j] > 57 && arr[j] < 65) || (arr[j] > 71 && arr[j] < 98) || (arr[j] > 98 && arr[j] < 114) || (arr[j] < 120 && arr[j] > 114) || (arr[j] > 120)) {
-					printf("1 INVALID NUMBER! %c\n", arr[j]);
-					exit(1);
-				}
-
-				//printf("%c\n", arr[j]);
 
 				// ZERO
 				if(arr[j] == 48) {
@@ -83,30 +88,18 @@ int main(int argc, char *argv[]) {
 					continue;
 				}
 
-				// BINARY NUMBER
+				// BINARY NUMBER - 0b start
 				if(arr[j] == 98 && zeroStart > 0 && j == 1) {
-					biNum++;
 					bIndex = i;
+					zeroB++;
 					continue;
 				}
-				if(j > 1 && zeroStart > 0 && biNum > 0) {
-					if(bIndex+1 == i) {
-						
-					}
-					if(arr[j] == 48) {
-						zero++;
-						continue;
-					}
-					if(arr[j] == 49) {
-						one++;
-						continue;
-					}
-					else {
+				if(j > 1 && zeroStart > 0 && bIndex > 0) {
+					if(arr[j] > 49 && arr[j] < 48) {
 						printf("1 INVALID NUMBER! %c\n", arr[j]);
 						exit(1);
 					}
 				}
-
 
 				// HEX NUMBER
 				if(zeroStart > 0 && j == 1 && arr[j] == 120) {
@@ -114,8 +107,9 @@ int main(int argc, char *argv[]) {
 					continue;
 				}
 				if(hex > 0 && j > 1) {
-					if(arr[j] > 64 && arr[j] < 71) {
-						printf("Hex Letter son!\n");
+					if(arr[j] < 48 || (arr[j] > 57 && arr[j] < 65) || arr[j] > 70) {
+						printf("1 INVALID NUMBER! %c\n", arr[j]);
+						exit(1);
 					}
 				}
 				
@@ -135,14 +129,21 @@ int main(int argc, char *argv[]) {
 				if(len == 2 && neg > 0) {
 					if(neg > 0 && arr[j] == 98 && j == 1) {
 						bFlag++;
-						
+						bIndex = i;
 						continue;
 					}
 					if(neg > 0 && arr[j] == 114 && j == 1) {
 						rFlag++;
-						//printf("R\n");
+						rIndex = i;
 						continue;
 					}
+				}
+
+				// INVALID CHARACTERS
+				/* 45 = -, 48-57 = 0-9, 65-70 = A-F, 98 = b, 114 = r */
+				if((arr[j] < 45) || (arr[j] == 46 || arr[j] == 47) || (arr[j] > 57 && arr[j] < 65) || (arr[j] > 71 && arr[j] < 98) || (arr[j] > 98 && arr[j] < 114) || (arr[j] < 120 && arr[j] > 114) || (arr[j] > 120)) {
+					printf("1 INVALID NUMBER! %c\n", arr[j]);
+					exit(1);
 				}
 				
 			} // end inner loop
@@ -152,28 +153,77 @@ int main(int argc, char *argv[]) {
 			printf("Length: %d\n", len);
 			printf("ONE: %d\n",one);
 
-			if(zeroStart + zero + one == len && len%4 == 0) {
+			// binary only 1s and 0s
+			if((zeroStart + zero + one == len) && (len%4 == 0)) {
 				printf("valid bit %s\n",arr);
-				strcat(biNumArr, argv[i]);
+				strcpy(biNumArr, argv[i]);
 			}
+			if((zeroStart + zero + one + zeroB == len)) {
+				printf("BI (zero start) valid bit %s\n",arr);
+				strcpy(biNumArr, argv[i]);
+			}
+			
 		}
 	} // end outer for loop
 
-	validateStuff(biNumArr, neg, biNum, hex, bFlag, rFlag);
+	printf("\nStrrrr %s, 0b %d, Neg %d, Hex %d, -b %d, -r %d, zero %d\n", biNumArr, zeroB, neg, hex, bFlag, rFlag, zero);
 
-	printf("\nStrrrr %d, Neg %d, Bin %d, Hex %d, -b %d, -r %d, zero %d\n", (int)biNumArr, neg, biNum, hex, bFlag, rFlag, zero);
+	sendStuff(biNumArr, rArr, neg, zeroB, hex, bFlag, rFlag);
 
 	free(biNumArr);
+	free(rArr);
 	free(arr);
-
+	
 
 	return 0;
 }
 
 
-void validateStuff(char *arr, int neg, int biNum, int hex, int bFlag, int rFlag) {
-	printf("\nINSIDE: %s, Neg %d, Bin %d, Hex %d, -b %d, -r %d\n", arr, neg, biNum, hex, bFlag, rFlag);
+void sendStuff(char *biNumArr, char *rArr, int neg, int zeroB, int hex, int bFlag, int rFlag) {
+
+	int i, j;
+	int biLen = 0, rLen = 0, rSplit = 0;
+	printf("\nFirst %p, %p\n",biNumArr, rArr);
+
+	char *new_R_Arr1 = malloc(sizeof(char) * 100);
+	char *finalIHope = malloc(sizeof(char) * 100);
+
+	printf("\nSecond %p, %p\n",new_R_Arr1, finalIHope);
+
+	printf("Zero B %d\n",zeroB);
+	if(bFlag > 0) {
+		biLen = strlen(biNumArr);
+		if(zeroB > 0) {
+			for(i = 2; i < biLen; i++) {
+				printf("Blaaa %c\n",biNumArr[i]);
+			}
+		}
+	}
+
 	
+	if(rFlag > 0) {
+		rLen = strlen(rArr);
+		printf("R Length %d\n",rLen);
+		for(j = 0; j < rLen; j++) {
+			if(rArr[j] == 44) {
+				printf("\nChar: %c Int: %d, J: %d\n", rArr[j], rArr[j], j);
+				rSplit = j;
+			}
+		}
+		printf("Huhhh %s\n", new_R_Arr1);
+		memcpy(new_R_Arr1, &rArr[0], rSplit);
+		new_R_Arr1[rSplit] = '\0';
+		printf("For real? %s\n", new_R_Arr1);
+		int leftString = (rLen-1) - rSplit;
+		printf("String Left %d\n",leftString);
+		memcpy(finalIHope, &rArr[rSplit+1],leftString);
+		printf("I hope this Works! %s\n", finalIHope);
+	}
+	
+	printf("\nVALIDATE BiNum: %s, r Array: %s, Neg %d, Hex %d, -b %d, -r %d\n", biNumArr, rArr, neg, hex, bFlag, rFlag);
+
+	free(new_R_Arr1);
+	free(finalIHope);
 }
 
 
