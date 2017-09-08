@@ -16,9 +16,9 @@ Binary Ex. 1010000011 -> 1x512 + 0x256 + 1x128 + 0x64 + 0x32 + 0x16 0x8 + 0x4 + 
 Etc
 */
 
-
-void sendStuff(char *biNumArr, char *rArr, int neg, int zeroB, int hex, int b, int r);
-
+int checkRegNumSize(char *regNum);
+void sendStuff(char *biNumArr, char *rArr, char *regNum, char *hexNum, int neg, int zeroB, int bitCount, int b, int r);
+//void numToBinary(char *regNum, char *rArr, char *biNumArr);
 
 int main(int argc, char *argv[]) {
 
@@ -27,11 +27,13 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 	
-	int zeroB = 0, bFlag = 0, bIndex = 0, i = 0, hex = 0, one = 0 , neg = 0, rFlag = 0, rIndex = 0, zero = 0, zeroStart = 0;
-	char *arr;
-	char *biNumArr = malloc(sizeof(char) * 100);
-	char *rArr = malloc(sizeof(char) * 100);
-	printf("Arr %p, Bi Num %p, R arr %p\n", arr, biNumArr, rArr);
+	int zeroB = 0, bFlag = 0, bIndex = 0, i = 0, hex = 0, one = 0 , neg = 0, rFlag = 0, rIndex = 0, zero = 0, zeroStart = 0, num = 0;
+	char arr[100];
+	char biNumArr[100];
+	char rArr[100];
+	char regNum[100];
+	char hexNum[100];
+	//printf("Arr %p, Bi Num %p, R arr %p\n", arr, biNumArr, rArr);
 	int bitCount = 0;
 	
 	for(i = 0; i < argc; i++) {
@@ -47,9 +49,9 @@ int main(int argc, char *argv[]) {
 			}
 			
 			printf("Length: %d\n",len);
-			arr = malloc(sizeof(char) * len);
+			//arr[len];
 			strcpy(arr, argv[i]);
-			printf("Num %s\n", arr);
+			printf("Arg Value %s\n", arr);
 			int j = 0;
 			
 			one = 0, neg = 0, zero = 0;
@@ -57,7 +59,7 @@ int main(int argc, char *argv[]) {
 			// NUMBER AFTER -b
 			if(i == bIndex+1 && bIndex > 0) {
 				bitCount = atoi(argv[i]);
-				printf("\nBit Count: %d\n\n",bitCount);
+				//printf("\nBit Count: %d\n\n",bitCount);
 				continue;
 			}
 			// NUMBERS AFTER -r
@@ -87,6 +89,10 @@ int main(int argc, char *argv[]) {
 					one++;
 					continue;
 				}
+				// NUMBERS 2-9
+				if(arr[j] > 49 && arr[j] < 58) {
+					num++;
+				}
 
 				// BINARY NUMBER - 0b start
 				if(arr[j] == 98 && zeroStart > 0 && j == 1) {
@@ -108,9 +114,10 @@ int main(int argc, char *argv[]) {
 				}
 				if(hex > 0 && j > 1) {
 					if(arr[j] < 48 || (arr[j] > 57 && arr[j] < 65) || arr[j] > 70) {
-						printf("1 INVALID NUMBER! %c\n", arr[j]);
+						printf("2 INVALID NUMBER! %c\n", arr[j]);
 						exit(1);
 					}
+					hex++;
 				}
 				
 				// NEGATIVE
@@ -148,50 +155,68 @@ int main(int argc, char *argv[]) {
 				
 			} // end inner loop
 
-			printf("\n");
+			//printf("\n");
 			
-			printf("Length: %d\n", len);
-			printf("ONE: %d\n",one);
+			//printf("Length: %d\n", len);
+			//printf("ONE: %d\n",one);
 
-			// binary only 1s and 0s
+			// BINARY only 1s and 0s
 			if((zeroStart + zero + one == len) && (len%4 == 0)) {
 				printf("valid bit %s\n",arr);
 				strcpy(biNumArr, argv[i]);
 			}
-			if((zeroStart + zero + one + zeroB == len)) {
+			// BINARY 0b start
+			else if((zeroStart + zero + one + zeroB == len)) {
 				printf("BI (zero start) valid bit %s\n",arr);
 				strcpy(biNumArr, argv[i]);
 			}
-			
+			// REGULAR POSITIVE NUMBER
+			else if(zero + one + num == len) {
+				printf("Regular Number %s\n",arr);
+				strcpy(regNum, argv[i]);
+			}
+			// REGULAR NEGATIVE NUMBER
+			else if(zero + one + num + neg == len) {
+				printf("Regular NEGATIVE Number %s\n",arr);
+				strcpy(regNum, argv[i]);
+			}
+			// HEX NUMBER
+			else if(zeroStart + zero + one + hex == len) {
+				printf("HEX Number %s\n",arr);
+				strcpy(hexNum, argv[i]);
+			}
 		}
 	} // end outer for loop
 
-	printf("\nStrrrr %s, 0b %d, Neg %d, Hex %d, -b %d, -r %d, zero %d\n", biNumArr, zeroB, neg, hex, bFlag, rFlag, zero);
+	printf("\nBinary Number %s, Regular Number: %s, Hex Num: %s, 0b %d, Neg %d, -b %d, Bit Count: %d, -r %d, R Numbers: %s, zero %d\n", biNumArr, regNum, hexNum, zeroB, neg, bFlag, bitCount, rFlag, rArr, zero);
 
-	sendStuff(biNumArr, rArr, neg, zeroB, hex, bFlag, rFlag);
+	int returnedNum = checkRegNumSize(regNum);
 
-	free(biNumArr);
-	free(rArr);
-	free(arr);
-	
+	if(returnedNum < 0) {
+		printf("This number is either larger than unsigned int from 0 to 4,294,967,295, or signed int of −2,147,483,648 to 2,147,483,648 %s\n", regNum);
+		exit(1);
+	}
+	sendStuff(biNumArr, rArr, regNum, hexNum, neg, zeroB, bFlag, bitCount, rFlag);
+
+
 
 	return 0;
 }
 
 
-void sendStuff(char *biNumArr, char *rArr, int neg, int zeroB, int hex, int bFlag, int rFlag) {
+void sendStuff(char *biNumArr, char *rArr, char *regNum, char *hexNum, int neg, int zeroB, int bFlag, int bitCount, int rFlag) {
 
 	int i, j;
 	int biLen = 0, rLen = 0, rSplit = 0;
-	printf("\nFirst %p, %p\n",biNumArr, rArr);
+	//printf("\nFirst %p, %p\n",biNumArr, rArr);
 
-	char *new_R_Arr1 = malloc(sizeof(char) * 100);
-	char *finalIHope = malloc(sizeof(char) * 100);
+	char new_R_Arr1[100];
+	char finalIHope[100];
 
-	printf("\nSecond %p, %p\n",new_R_Arr1, finalIHope);
+	//printf("\nSecond %p, %p\n",new_R_Arr1, finalIHope);
 
-	printf("Zero B %d\n",zeroB);
-	if(bFlag > 0) {
+	//printf("Zero B %d\n",zeroB);
+	if(zeroB > 0) {
 		biLen = strlen(biNumArr);
 		if(zeroB > 0) {
 			for(i = 2; i < biLen; i++) {
@@ -220,12 +245,20 @@ void sendStuff(char *biNumArr, char *rArr, int neg, int zeroB, int hex, int bFla
 		printf("I hope this Works! %s\n", finalIHope);
 	}
 	
-	printf("\nVALIDATE BiNum: %s, r Array: %s, Neg %d, Hex %d, -b %d, -r %d\n", biNumArr, rArr, neg, hex, bFlag, rFlag);
+	printf("\nVALIDATE BiNum: %s, r Array: %s, Regular Number: %s, Hex Num: %s, Neg %d, -b %d, Bit Count: %d, -r %d\n", biNumArr, rArr, regNum, hexNum, neg, bFlag, bitCount, rFlag);
 
-	free(new_R_Arr1);
-	free(finalIHope);
 }
 
 
+int checkRegNumSize(char *regNum) {
+	int len = strlen(regNum);
+	int i = 0, neg = 0;
+	if(regNum[0] == 45) {
+		printf("NEGATIVE: %s\n",regNum);
 
+		return 0;
+	}
+
+	return -1;
+}
 
