@@ -79,9 +79,10 @@ int power(int x, int y) {
 
 
 void stringToDigit(char *argv, struct ntInfo *nti, int negFlag) {
-    int i = 0, j = 0, sum = 0;
+    int i = 0, j = 0;
     int len = strlen(argv);
     unsigned int max = 4294967295;
+    unsigned int sum = 0;
 
     if(len > 10) {
         printf("too long length\n");
@@ -103,6 +104,7 @@ void stringToDigit(char *argv, struct ntInfo *nti, int negFlag) {
             sum += num*ten;
             i++;
         }
+        //printf("Pos Sum: %u\n",sum);
     } 
     else if(negFlag > 0) {
         for(j = len-1; j > 0; j--) {
@@ -123,6 +125,7 @@ void stringToDigit(char *argv, struct ntInfo *nti, int negFlag) {
         exit(1);
     }
     nti->value = sum;
+    //printf("Value %u\n",nti->value);
 }
 
 void splitR(char *argv, struct ntInfo *nti) {
@@ -218,11 +221,28 @@ void validateBinary(char *argv) {
 
 void printBinaryValueCLiteral(struct ntInfo *nti) {
 
-    int i;
+    int i = 0, j = 0;
     int b;
-    printf("0b");
+    
     int bitLength = nti->bitCount;
+    int rStart = nti->r0;
+    int rEnd = nti->r1;
+    //printf("Start: %d, End: %d\n", rStart, rEnd);
     unsigned int thisValue = 0;
+    printf("0b");
+
+    /*if(rStart > 0 && bitLength < 1) {
+        printf("inside\n");
+        for (i = rStart; i >= rEnd; i--) {
+            if(i == rStart) {
+                b = (nti->value >> (i-1)) & 0b1;
+                continue;
+            } else {
+                b = (nti->value >> i) & 0b1;
+                printf("%d\n", b);
+            }
+        }
+    }*/
 
     if(bitLength > 0) {
         for (i = bitLength; i >= 0; i--) {
@@ -250,20 +270,106 @@ void printBinaryValueCLiteral(struct ntInfo *nti) {
 }
 
 void printBinary(struct ntInfo *nti) {
-    int i = 0, num = 0;
+    int fullLength = nti->stringWidth-1;
+    int i = 0, num = 0, neg = 0;
     int b;
     int bitLength = nti->bitCount;
-    int j = bitLength-1;
-    
     int thisPower = bitLength-1;
     int rEnd = nti->r0;
     int rStart = nti->r1;
     int k = rStart-1;
     unsigned int thisValue = 0;
     int signedValue = 0;
+    printf("Rend %d, rStart %d, Bits %d, Value: %u\n",rEnd, rStart, bitLength, nti->value);
 
-    if(bitLength > 0 || rStart > 0) {
-        printf("Bits: %d, Range Start: %d, Range End: %d\n", bitLength, rStart, rEnd);
+    // -r, no -b
+    if(rEnd >0 && bitLength == 0) {
+        k = 0;
+        for(i = rEnd; i <= rStart; i++) {
+            b = (nti->value >> i) & 0b1;
+            if(i%4 == 3 && i < rEnd-3) {
+                printf(" ");
+            }
+            printf("%d\n", b);
+            num = power(2, k);
+            thisValue += num*b;
+            signedValue += num*b;
+            k++;
+            if(b == 1 && i == rEnd) {
+                neg++;
+            }
+        } 
+        // -b no -r
+    } else if(bitLength > 0 && rStart == 0) {
+        int j = bitLength-1;
+        for (i = bitLength; i >= 0; i--) {
+            if(i == bitLength) {
+                b = (nti->value >> (i-1)) & 0b1;
+                continue;
+            } else {
+                b = (nti->value >> i) & 0b1;
+                if(i%4 == 3 && i < bitLength-3) {
+                    printf(" ");
+                }
+                printf("%d", b);
+                num = power(2, j);
+                thisValue += num*b;
+                signedValue+= num*b;
+                j--;
+                if(b == 1 && i == bitLength) {
+                    neg++;
+                }
+            }
+        }
+        printf("\n");
+        // -b and -r
+    } else if(bitLength > 0 && rStart > 0) {
+        int smallest = 0, a = 0;
+        int range = rStart - rEnd;
+        if(range < bitLength) {
+            smallest = range;
+        } else { 
+            smallest = bitLength;
+        }
+        for(i = rEnd; i < smallest+rEnd+1; i++) {
+            b = (nti->value >> i) & 0b1;
+            if(i%4 == 3 && i < rEnd-3) {
+                printf(" ");
+            }
+            printf("%d\n", b);
+            num = power(2, a);
+            thisValue += num*b;
+            signedValue += num*b;
+            a++;
+            if(b == 1 && i == rEnd) {
+                neg++;
+            }
+        }
+    } else {
+        int d = nti->stringWidth-1;
+        for (i = nti->stringWidth; i >= 0; i--) {
+            if(i == nti->stringWidth) {
+                b = (nti->value >> (i-1)) & 0b1;
+                continue;
+            } else {
+                b = (nti->value >> i) & 0b1;
+                if(i%4 == 3 && i < nti->stringWidth-3) {
+                    printf(" ");
+                }
+                printf("%d", b);
+                num = power(2, d);
+                thisValue += num*b;
+                signedValue += num*b;
+                d--;
+            }
+            if(b == 1 && i == nti->stringWidth) {
+                neg++;
+            }
+        }
+        printf("\n");
+    }
+    printf("Signed: %d, Unsigned: %u, neg: %d",signedValue,thisValue, neg);
+    /*
 
         for (i = bitLength; i >= 0; i--) {
             //printf("INSIDE, I%d\n", i);
@@ -302,8 +408,9 @@ void printBinary(struct ntInfo *nti) {
                 }
             }
             
-        }
-    } else {
+        }*/
+    
+    /*else {
         for (i = nti->stringWidth; i >= 0; i--) {
             
             if(i == nti->stringWidth) {
@@ -317,10 +424,11 @@ void printBinary(struct ntInfo *nti) {
                 printf("%d", b);
             }
         }
-    }
+    }*/
     printf(" (base 2)\n");
     //printf("New UNSIGNED Value: %u, New Signed Value: %d\n",thisValue, signedValue);
     nti->newValue = thisValue;
+    
     return;
 }
 
@@ -340,10 +448,11 @@ void printSignedAndUnsignedValue(struct ntInfo *nti) {
 
 
 
-void stringToHex(char *argv, struct ntInfo *nti) {
+void hexStringToDigit(char *argv, struct ntInfo *nti) {
     int len = strlen(argv);
     int i = 0, j = 0, num = 0, sum = 0;
     unsigned int max = 4294967295;
+
 
     for(i = len-1; i > 1; i--) {
         if(argv[i] < 48 || (argv[i] > 57 && argv[i] < 65) || argv[i] > 70) {
@@ -432,7 +541,7 @@ void parseArgs(int argc, char **argv, struct ntInfo *nti) {
                     normalizeBinary(argv[i], nti);
                     continue;
                 } else if(argv[i][1] == 120) {
-                    stringToHex(argv[i], nti);
+                    hexStringToDigit(argv[i], nti);
                     continue;
                 }  
             }
@@ -448,19 +557,43 @@ void parseArgs(int argc, char **argv, struct ntInfo *nti) {
     return;
 }
 
+void twosCompliment(struct ntInfo *nti) {
+    unsigned int num = nti->value;
+    char arr[64];
+
+}
+
 void decimalToBin(struct ntInfo *nti) {
 
-    int num = nti->value;
-    int rem = 0;
+    unsigned int num = nti->value;
+    int rEnd = nti->r0;
+    int rStart = nti->r1;
+    int bitLength = nti->bitCount;
+    printf("NUM: %u\n",num);
+    int i = 0, j = 0;
+    char rem = 0;
+    char arr[64];
 
     while(num != 0) {
         if(num%2 == 0) {
-            rem = 0;
+            rem = '0';
         } else {
-            rem = 1;
+            rem = '1';
         }
         num = num/2;
-        printf("%d",rem);
+        arr[i] = rem;
+        i++;
+    }
+    //printf("\n");
+    int len = strlen(arr);
+    char newNum[64];
+    printf("len: %d\n", len);
+
+    for(j = len; j >= 0; j--) {
+        if(rEnd > 0 && bitLength == 0) {
+
+        }
+        printf("%c", arr[j]);
     }
     printf("\n");
 }
@@ -476,12 +609,15 @@ void decimalToHex(struct ntInfo *nti) {
         if(rem > 9) {
             letter = rem - 9;
             arr[i] = letter+64;
+            //printf("%c", arr[i]);
         } else {
             arr[i] = rem+48;
+           // printf("%c", arr[i]);
         }
         i++;
         num = num/16;
     }
+    //printf("\n");
 
     int bitLength = nti->bitCount;
     if(bitLength > 0) {
@@ -497,7 +633,7 @@ void decimalToHex(struct ntInfo *nti) {
         printf("0");
     }
 
-    for(j = i; j >= 0; j--) {
+    for(j = i-1; j >= 0; j--) {
         if(bitLength-1 < j){
             continue;
         } else {
@@ -521,7 +657,7 @@ int main(int argc, char **argv) {
     ntInfoInit(&nti);
 
     parseArgs(argc, argv, &nti);
-
+    
     printConversions(&nti);
 
 
