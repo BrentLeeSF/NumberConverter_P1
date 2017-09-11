@@ -25,7 +25,9 @@ struct ntInfo {
     int r1;
     unsigned int value;
     int bitCount;
-    unsigned int newValue;
+    unsigned int newUnsignedValue;
+    int newSignedValue;
+
 };
 
 /* Initialize an nt_info struct to default and known initial values. */
@@ -36,7 +38,8 @@ void ntInfoInit(struct ntInfo *nti) {
     nti->r1 = 0;
     nti->value = 0;
     nti->bitCount = 0;
-    nti->newValue = 0;
+    nti->newUnsignedValue = 0;
+    nti->newSignedValue = 0;
     return;
 }
 
@@ -48,7 +51,8 @@ void ntInfoPrint(struct ntInfo *nti) {
     printf("r1    = %d\n", nti->r1);
     printf("value = %u\n", nti->value);
     printf("Bit Count = %u\n", nti->bitCount);
-    printf("New Value = %u\n\n", nti->newValue);
+    printf("New Value = %u\n", nti->newUnsignedValue);
+    printf("New Value = %d\n", nti->newSignedValue);
     return;
 }
 
@@ -104,7 +108,6 @@ void stringToDigit(char *argv, struct ntInfo *nti, int negFlag) {
             sum += num*ten;
             i++;
         }
-        //printf("Pos Sum: %u\n",sum);
     } 
     else if(negFlag > 0) {
         for(j = len-1; j > 0; j--) {
@@ -125,7 +128,7 @@ void stringToDigit(char *argv, struct ntInfo *nti, int negFlag) {
         exit(1);
     }
     nti->value = sum;
-    //printf("Value %u\n",nti->value);
+    printf("Value %u\n",nti->value);
 }
 
 void splitR(char *argv, struct ntInfo *nti) {
@@ -208,7 +211,6 @@ void validateBinary(char *argv) {
                 valid = false;
                 break;
             }
-            //printf("%c", c);
         }
     }
     if (!valid) {
@@ -269,6 +271,57 @@ void printBinaryValueCLiteral(struct ntInfo *nti) {
     return;
 }
 
+void twosCompliment(struct ntInfo *nti) {
+
+    int num = nti->newSignedValue;
+    int index = 0;
+    char thisBin[32];
+    int thisDecimal = num;
+    //printf("NUM: %d\n",num);
+
+    while(thisDecimal != 0) {
+        if((thisDecimal%2) == 0) {
+            thisBin[index] = '1';
+        } else {
+            thisBin[index] = '0';
+        }
+        thisDecimal /= 2;
+        index++;
+    }
+    thisBin[index] = '\0';
+    //printf("I hope this works %s\n",thisBin);
+
+    int j = 0, carry = 1;
+    int thisCharLength = strlen(thisBin);
+    char finalDecimal[32];
+    int finalIndex = 0;
+
+    for(j = 0; j < thisCharLength; j++) {
+        if(thisBin[j] == 49 && carry == 1) {
+            finalDecimal[j] = '0';
+        } else if(thisBin[j] == 48 && carry == 1) {
+            finalDecimal[j] = '1';
+            carry = 0;
+        } else {
+            finalDecimal[j] = thisBin[j];
+        }
+    }
+    finalDecimal[thisCharLength] = '\0';
+    //printf("\nI hope this works 2 %s\n",finalDecimal);
+
+    int b = 0, a = 0, thisNum = 0, finalSigned = 0;
+    int k = thisCharLength-1;
+    for(a = thisCharLength-1; a >= 0; a--) {
+        b = (int)finalDecimal[k] - 48;
+        thisNum = power(2, k);
+        finalSigned += thisNum*b;
+        //printf("inal Signed %d\n",finalSigned);
+        k--;
+    }
+    nti->newSignedValue = finalSigned*-1;
+    printf("FINAL SIGNED %d\n", nti->newSignedValue);
+}
+
 void printBinary(struct ntInfo *nti) {
     int fullLength = nti->stringWidth-1;
     int i = 0, num = 0, neg = 0;
@@ -277,28 +330,35 @@ void printBinary(struct ntInfo *nti) {
     int thisPower = bitLength-1;
     int rEnd = nti->r0;
     int rStart = nti->r1;
-    int k = rStart-1;
-    unsigned int thisValue = 0;
+    int k = 0;
+    unsigned int unsignedValue = 0;
     int signedValue = 0;
     printf("Rend %d, rStart %d, Bits %d, Value: %u\n",rEnd, rStart, bitLength, nti->value);
-
+    
     // -r, no -b
     if(rEnd >0 && bitLength == 0) {
-        k = 0;
-        for(i = rEnd; i <= rStart; i++) {
+        k = rStart - rEnd;
+        for(i = rStart; i >= rEnd; i--) {
             b = (nti->value >> i) & 0b1;
             if(i%4 == 3 && i < rEnd-3) {
                 printf(" ");
             }
-            printf("%d\n", b);
+            printf("%d", b);
             num = power(2, k);
-            thisValue += num*b;
+            unsignedValue += num*b;
             signedValue += num*b;
-            k++;
-            if(b == 1 && i == rEnd) {
+            k--;
+            if(b == 1 && i == rStart) {
                 neg++;
             }
-        } 
+        }
+        nti->newUnsignedValue = unsignedValue;
+        nti->newSignedValue = signedValue;
+        printf("\n");
+        if(neg > 0) {
+            twosCompliment(nti);
+        }
+
         // -b no -r
     } else if(bitLength > 0 && rStart == 0) {
         int j = bitLength-1;
@@ -313,38 +373,42 @@ void printBinary(struct ntInfo *nti) {
                 }
                 printf("%d", b);
                 num = power(2, j);
-                thisValue += num*b;
+                unsignedValue += num*b;
                 signedValue+= num*b;
                 j--;
-                if(b == 1 && i == bitLength) {
+                if(b == 1 && i == bitLength-1) {
                     neg++;
                 }
             }
         }
         printf("\n");
+
         // -b and -r
     } else if(bitLength > 0 && rStart > 0) {
-        int smallest = 0, a = 0;
+        
+        int smallest = 0;
         int range = rStart - rEnd;
         if(range < bitLength) {
             smallest = range;
         } else { 
             smallest = bitLength;
         }
-        for(i = rEnd; i < smallest+rEnd+1; i++) {
+        int a = smallest;
+        for(i = smallest+rEnd; i >= rEnd; i--) {
             b = (nti->value >> i) & 0b1;
             if(i%4 == 3 && i < rEnd-3) {
                 printf(" ");
             }
-            printf("%d\n", b);
+            printf("%d", b);
             num = power(2, a);
-            thisValue += num*b;
+            unsignedValue += num*b;
             signedValue += num*b;
-            a++;
-            if(b == 1 && i == rEnd) {
+            a--;
+            if(b == 1 && i == rStart) {
                 neg++;
             }
         }
+        printf("\n");
     } else {
         int d = nti->stringWidth-1;
         for (i = nti->stringWidth; i >= 0; i--) {
@@ -358,17 +422,17 @@ void printBinary(struct ntInfo *nti) {
                 }
                 printf("%d", b);
                 num = power(2, d);
-                thisValue += num*b;
+                unsignedValue += num*b;
                 signedValue += num*b;
                 d--;
             }
-            if(b == 1 && i == nti->stringWidth) {
+            if(b == 1 && i == nti->stringWidth-1) {
                 neg++;
             }
         }
         printf("\n");
     }
-    printf("Signed: %d, Unsigned: %u, neg: %d",signedValue,thisValue, neg);
+    printf("Signed: %d, Unsigned: %u, neg: %d\n",signedValue,unsignedValue, neg);
     /*
 
         for (i = bitLength; i >= 0; i--) {
@@ -427,7 +491,7 @@ void printBinary(struct ntInfo *nti) {
     }*/
     printf(" (base 2)\n");
     //printf("New UNSIGNED Value: %u, New Signed Value: %d\n",thisValue, signedValue);
-    nti->newValue = thisValue;
+    //nti->newValue = thisValue;
     
     return;
 }
@@ -435,7 +499,7 @@ void printBinary(struct ntInfo *nti) {
 void printSignedAndUnsignedValue(struct ntInfo *nti) {
     int bitLength = nti->bitCount;
     if(bitLength > 0) {
-        printf("%u (base 10 unsigned)\n", nti->newValue);
+       // printf("%u (base 10 unsigned)\n", nti->newValue);
         printf("%d (base 10 signed)\n", nti->value);
     } else {
         printf("%u (base 10 unsigned)\n", nti->value);
@@ -557,11 +621,6 @@ void parseArgs(int argc, char **argv, struct ntInfo *nti) {
     return;
 }
 
-void twosCompliment(struct ntInfo *nti) {
-    unsigned int num = nti->value;
-    char arr[64];
-
-}
 
 void decimalToBin(struct ntInfo *nti) {
 
