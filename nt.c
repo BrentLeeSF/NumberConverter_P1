@@ -488,6 +488,7 @@ what it claims to be. Or, can determine if it's invalid, and prints
 error message */
 void parse_args(int argc, char **argv, struct nt_info *nti) {
 
+
     int i = 0, j = 0, b = 0, len = 0, bit_flag = 0, bin_flag = 0, bit_index = 0, r_flag = 0, neg_flag = 0;
 
     if (argc < 2) {
